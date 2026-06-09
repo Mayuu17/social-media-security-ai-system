@@ -1,0 +1,6 @@
+{
+  "name": "Social Media Security AI System",
+  "description": "An AI-powered social media security platform that analyzes public profile links to detect fake accounts, bots, and impersonation risks.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
