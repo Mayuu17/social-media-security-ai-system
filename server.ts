@@ -34,15 +34,17 @@ async function startServer() {
 
       const systemInstruction = `
 You are an advanced Social Media Security AI System.
-Determine whether the provided social media account (from a username or URL) is REAL, FAKE, or BOT-LIKE, or potentially IMPERSONATING another identity.
-Since real-time scraping might be unavailable, simulate the extraction process using AI reasoning based on common patterns and typical hallmarks of the given type of account, or common knowledge if it's a famous account.
-Ensure the resulting numbers make sense and match the classification.
+Determine whether the provided social media account (from a username or URL) is REAL, FAKE, or an Automated/Suspicious Account, or potentially IMPERSONATING another identity.
+Since real-time scraping might be unavailable, simulate the extraction process using AI reasoning based on common patterns and typical hallmarks of the given type of account.
+Automatically detect the platform (Instagram, LinkedIn, Facebook, X (Twitter)).
+NEVER generate fake follower, following, or post counts. If realistic numbers are unavailable, use "Data Unavailable" for those fields.
+Ensure the resulting classifications and scores make sense and match the analysis logic.
 
 Output the analysis in the requested JSON structure.
       `;
 
       const prompt = `Analyze the typical behaviors, characteristics, and estimated metrics for the following social media identifier: ${input}.
-      Provide realistic numbers that represent what this profile's stats might look like if it matches the detected category (Real/Fake/Bot).`;
+      Detect the platform. If real numbers are unavailable, output "Data Unavailable". Provide realistic security assessment scores based on the provided identifier.`;
 
       let parsedData;
       try {
@@ -55,14 +57,18 @@ Output the analysis in the requested JSON structure.
             responseSchema: {
               type: Type.OBJECT,
               properties: {
+                platformDetected: {
+                  type: Type.STRING,
+                  description: "Instagram, LinkedIn, Facebook, X (Twitter), or Unknown"
+                },
                 metrics: {
                   type: Type.OBJECT,
                   properties: {
-                    followers_count: { type: Type.INTEGER },
-                    following_count: { type: Type.INTEGER },
-                    posts_count: { type: Type.INTEGER },
-                    bio_length: { type: Type.INTEGER },
-                    verified_status: { type: Type.BOOLEAN },
+                    followers_count: { type: Type.STRING, description: "A number string or 'Data Unavailable'" },
+                    following_count: { type: Type.STRING, description: "A number string or 'Data Unavailable'" },
+                    posts_count: { type: Type.STRING, description: "A number string or 'Data Unavailable'" },
+                    bio_length: { type: Type.STRING, description: "A number string or 'Data Unavailable'" },
+                    verified_status: { type: Type.STRING, description: "true, false, or 'Data Unavailable'" },
                     engagement_estimate: { type: Type.STRING },
                     username_randomness_score: { type: Type.INTEGER, description: "0-100" },
                     identity_consistency_score: { type: Type.INTEGER, description: "0-100" },
@@ -72,7 +78,7 @@ Output the analysis in the requested JSON structure.
                 },
                 classification: {
                   type: Type.STRING,
-                  description: "REAL, FAKE, or BOT-LIKE"
+                  description: "REAL, FAKE, or Automated/Suspicious Account"
                 },
                 impersonationRisk: {
                   type: Type.STRING,
@@ -91,7 +97,7 @@ Output the analysis in the requested JSON structure.
                   description: "Detailed explanation of why this classification was made based on the metrics."
                 }
               },
-              required: ["metrics", "classification", "impersonationRisk", "riskScore", "confidenceScore", "technicalExplanation"]
+              required: ["platformDetected", "metrics", "classification", "impersonationRisk", "riskScore", "confidenceScore", "technicalExplanation"]
             }
           }
         });
@@ -104,18 +110,19 @@ Output the analysis in the requested JSON structure.
         console.warn("Generation failed, falling back to mock data:", genError.message);
         const isUrl = input.includes("http");
         parsedData = {
+          platformDetected: input.includes("instagram") ? "Instagram" : input.includes("x.com") || input.includes("twitter") ? "X (Twitter)" : input.includes("linkedin") ? "LinkedIn" : input.includes("facebook") ? "Facebook" : "Unknown",
           metrics: {
-            followers_count: Math.floor(Math.random() * 500) + 10,
-            following_count: Math.floor(Math.random() * 5000) + 1000,
-            posts_count: Math.floor(Math.random() * 10),
-            bio_length: Math.floor(Math.random() * 30),
-            verified_status: false,
-            engagement_estimate: ((Math.random() * 0.5) + 0.01).toFixed(2) + "%",
+            followers_count: "Data Unavailable",
+            following_count: "Data Unavailable",
+            posts_count: "Data Unavailable",
+            bio_length: "Data Unavailable",
+            verified_status: "Data Unavailable",
+            engagement_estimate: "Data Unavailable",
             username_randomness_score: Math.floor(Math.random() * 20) + 80,
             identity_consistency_score: Math.floor(Math.random() * 30),
             activity_pattern_score: Math.floor(Math.random() * 20) + 75
           },
-          classification: "BOT-LIKE",
+          classification: "Automated/Suspicious Account",
           impersonationRisk: "HIGH",
           riskScore: Math.floor(Math.random() * 20) + 80,
           confidenceScore: Math.floor(Math.random() * 15) + 85,

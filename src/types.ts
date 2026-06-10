@@ -1,9 +1,9 @@
 export interface ProfileMetrics {
-  followers_count: number;
-  following_count: number;
-  posts_count: number;
-  bio_length: number;
-  verified_status: boolean;
+  followers_count: number | string;
+  following_count: number | string;
+  posts_count: number | string;
+  bio_length: number | string;
+  verified_status: boolean | string;
   engagement_estimate: string;
   username_randomness_score: number;
   identity_consistency_score: number;
@@ -11,8 +11,9 @@ export interface ProfileMetrics {
 }
 
 export interface AnalysisResult {
+  platformDetected: "Instagram" | "LinkedIn" | "Facebook" | "X (Twitter)" | "Unknown";
   metrics: ProfileMetrics;
-  classification: "REAL" | "FAKE" | "BOT-LIKE";
+  classification: "REAL" | "FAKE" | "Automated/Suspicious Account";
   impersonationRisk: "LOW" | "MEDIUM" | "HIGH";
   riskScore: number;
   confidenceScore: number;

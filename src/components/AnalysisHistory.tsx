@@ -19,7 +19,7 @@ export function AnalysisHistory({ history, onSelect }: AnalysisHistoryProps) {
   return (
     <div className="space-y-3">
       {history.map((item) => {
-        const isBot = item.result.classification === "BOT-LIKE";
+        const isBot = item.result.classification === "Automated/Suspicious Account";
         const isFake = item.result.classification === "FAKE";
         const isReal = item.result.classification === "REAL";
 

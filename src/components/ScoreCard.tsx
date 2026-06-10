@@ -12,6 +12,8 @@ interface ScoreCardProps {
 }
 
 export function ScoreCard({ title, value, subtitle, icon, colorClass, delay = 0 }: ScoreCardProps) {
+  const isDataUnavailable = value === "Data Unavailable";
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -29,7 +31,11 @@ export function ScoreCard({ title, value, subtitle, icon, colorClass, delay = 0 
       
       <div className="flex-1">
         <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{title}</h3>
-        <div className={cn("text-2xl font-bold mt-1 font-mono tracking-tight", colorClass || "text-white")}>
+        <div className={cn(
+          "font-bold mt-1 tracking-tight", 
+          isDataUnavailable ? "text-sm text-slate-500 mt-2 font-sans" : "text-2xl font-mono",
+          colorClass && !isDataUnavailable ? colorClass : (isDataUnavailable ? "" : "text-white")
+        )}>
           {value}
         </div>
         {subtitle && (
