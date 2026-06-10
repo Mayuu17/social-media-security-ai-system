@@ -1,21 +1,28 @@
 import { useState, useRef, useEffect } from "react";
-import { Shield, Search, ShieldAlert, ShieldCheck, Activity, Copy, Download, Info, Loader2, Users, FileText, CheckCircle2 } from "lucide-react";
+import { Shield, Search, ShieldAlert, Copy, Download, Info, Loader2, Users, FileText, CheckCircle2, Check } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { AnalysisResult, HistoryItem } from "./types";
+import { AnalysisResult, HistoryItem, Suggestion } from "./types";
 import { ScoreCard } from "./components/ScoreCard";
 import { Gauge } from "./components/Gauge";
 import { AnalysisHistory } from "./components/AnalysisHistory";
 import { cn } from "./lib/utils";
 
+const PLATFORMS = ["Instagram", "LinkedIn", "Facebook", "X (Twitter)"];
+
 export default function App() {
   const [input, setInput] = useState("");
+  const [platform, setPlatform] = useState("X (Twitter)");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const reportRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout>();
 
   // Load history from local storage on mount
   useEffect(() => {
@@ -29,10 +36,11 @@ export default function App() {
     }
   }, []);
 
-  const saveToHistory = (inputStr: string, res: AnalysisResult) => {
+  const saveToHistory = (inputStr: string, plat: string, res: AnalysisResult) => {
     const newItem: HistoryItem = {
       id: Math.random().toString(36).substring(7),
       input: inputStr,
+      platform: plat,
       date: new Date().toISOString(),
       result: res,
     };
@@ -41,19 +49,60 @@ export default function App() {
     localStorage.setItem("social_sec_history", JSON.stringify(newHistory));
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInput(val);
+    
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    
+    if (val.trim().length >= 2 && !val.includes("http")) {
+      setIsSearchingSuggestions(true);
+      setShowSuggestions(true);
+      debounceRef.current = setTimeout(async () => {
+        try {
+          const res = await fetch("/api/suggestions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: val, platform }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setSuggestions(data.suggestions || []);
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setIsSearchingSuggestions(false);
+        }
+      }, 1000);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setIsSearchingSuggestions(false);
+    }
+  };
+
+  const handleSelectSuggestion = (suggestion: Suggestion) => {
+    setInput(suggestion.username);
+    setShowSuggestions(false);
+  };
+
   const handleAnalyze = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!input.trim()) return;
 
+    setShowSuggestions(false);
     setIsLoading(true);
     setError(null);
     setResult(null);
+
+    const queryInput = input.includes("http") ? input.trim() : `${platform}: ${input.trim()}`;
 
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: input.trim() }),
+        body: JSON.stringify({ input: queryInput }),
       });
 
       if (!res.ok) {
@@ -63,7 +112,7 @@ export default function App() {
 
       const data: AnalysisResult = await res.json();
       setResult(data);
-      saveToHistory(input.trim(), data);
+      saveToHistory(input.trim(), platform, data);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -131,23 +180,77 @@ This analysis is based on publicly available information and AI-driven behaviora
             <div className="bg-[#0F1117]/50 border border-white/5 rounded-2xl p-6">
               <h3 className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-4">Analyze Profile</h3>
               <form onSubmit={handleAnalyze} className="space-y-4">
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {PLATFORMS.map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPlatform(p)}
+                      className={cn(
+                        "py-2 px-3 text-xs rounded-xl border flex items-center justify-between transition-colors",
+                        platform === p 
+                          ? "bg-blue-600/10 border-blue-500/50 text-blue-400" 
+                          : "bg-transparent border-white/5 text-slate-400 hover:bg-white/5 hover:text-white"
+                      )}
+                    >
+                      {p}
+                      {platform === p && <Check className="w-3 h-3" />}
+                    </button>
+                  ))}
+                </div>
+                
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                    <Search className="w-5 h-5" />
+                    <Search className="w-4 h-4" />
                   </div>
                   <input
                     type="text"
                     disabled={isLoading}
-                    placeholder="Enter username or profile URL..."
-                    className="w-full bg-[#161922] border border-white/10 rounded-2xl py-4 flex-1 px-6 pl-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-white shadow-2xl placeholder-slate-500"
+                    placeholder={`Enter ${platform} username or URL...`}
+                    className="w-full bg-[#161922] border border-white/10 rounded-2xl py-3 flex-1 px-6 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-white shadow-inner placeholder-slate-600"
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    onChange={handleInputChange}
+                    onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
                   />
+                  
+                  <AnimatePresence>
+                    {showSuggestions && (input.length >= 2) && !input.includes("http") && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        className="absolute z-50 left-0 right-0 top-full mt-2 bg-[#161922] border border-white/10 rounded-xl overflow-hidden shadow-2xl"
+                      >
+                       {isSearchingSuggestions ? (
+                          <div className="p-4 flex items-center justify-center text-slate-500 text-xs">
+                            <Loader2 className="w-3 h-3 mr-2 animate-spin" /> Fetching suggestions...
+                          </div>
+                        ) : suggestions.length > 0 ? (
+                          <ul>
+                            {suggestions.map((s, i) => (
+                              <li key={i}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectSuggestion(s)}
+                                  className="w-full text-left px-4 py-3 hover:bg-[#1C202B] transition-colors flex flex-col border-b border-white/5 last:border-0"
+                                >
+                                  <span className="text-sm text-white font-medium">@{s.username}</span>
+                                  <span className="text-xs text-slate-500">{s.name}</span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div className="p-4 text-center text-slate-500 text-xs">No suggestions found</div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
                 <button
                   type="submit"
                   disabled={isLoading || !input.trim()}
-                  className="w-full flex justify-center items-center bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  className="w-full flex justify-center items-center bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm mt-4"
                 >
                   {isLoading ? (
                     <>

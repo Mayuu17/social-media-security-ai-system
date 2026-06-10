@@ -20,9 +20,15 @@ export interface AnalysisResult {
   technicalExplanation: string;
 }
 
+export interface Suggestion {
+  username: string;
+  name: string;
+}
+
 export interface HistoryItem {
   id: string;
   input: string;
+  platform: string;
   date: string;
   result: AnalysisResult;
 }

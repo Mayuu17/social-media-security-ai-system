@@ -12,7 +12,17 @@ interface ScoreCardProps {
 }
 
 export function ScoreCard({ title, value, subtitle, icon, colorClass, delay = 0 }: ScoreCardProps) {
-  const isDataUnavailable = value === "Data Unavailable";
+  const isDataUnavailable = typeof value === 'string' && value.includes("Data Unavailable");
+  const isEstimated = typeof value === 'string' && value.includes("Estimated");
+
+  // Keep the number logic simple
+  let displayValue = value;
+  let estimatedLabel = null;
+
+  if (isEstimated && typeof value === 'string') {
+    displayValue = value.replace(/\s*\(Estimated.*\)/i, '');
+    estimatedLabel = <span className="text-[9px] text-slate-500 uppercase tracking-wider block mt-0.5">Estimated</span>;
+  }
   
   return (
     <motion.div
@@ -24,7 +34,7 @@ export function ScoreCard({ title, value, subtitle, icon, colorClass, delay = 0 
       <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b opacity-50 from-transparent via-slate-700 to-transparent group-hover:via-white transition-all duration-500"></div>
       
       {icon && (
-        <div className={cn("p-3 rounded-lg bg-slate-800/50 text-slate-400", colorClass)}>
+        <div className={cn("p-2 rounded-lg bg-slate-800/50 text-slate-400 mt-1", colorClass)}>
           {icon}
         </div>
       )}
@@ -32,12 +42,13 @@ export function ScoreCard({ title, value, subtitle, icon, colorClass, delay = 0 
       <div className="flex-1">
         <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{title}</h3>
         <div className={cn(
-          "font-bold mt-1 tracking-tight", 
-          isDataUnavailable ? "text-sm text-slate-500 mt-2 font-sans" : "text-2xl font-mono",
+          "font-bold mt-0.5 tracking-tight", 
+          isDataUnavailable ? "text-sm text-slate-500 mt-2 font-sans" : "text-xl xl:text-2xl font-mono",
           colorClass && !isDataUnavailable ? colorClass : (isDataUnavailable ? "" : "text-white")
         )}>
-          {value}
+          {displayValue}
         </div>
+        {estimatedLabel}
         {subtitle && (
           <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
         )}
